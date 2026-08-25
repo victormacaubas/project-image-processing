@@ -1,7 +1,10 @@
 """Definições de modelo para cada experimento.
 
-STATUS: esqueleto. SmallCNN e LinearProbe são da Mari (Passo 6 e 7 do
-roteiro); build_finetune_model é do Victor (Passo 8).
+STATUS: esqueleto — é o único módulo ainda em aberto.
+
+  SmallCNN            Mari, Passo 5 do roteiro
+  LinearProbe         Mari, Passo 6
+  build_finetune_model  Victor, Passo 3
 """
 
 from __future__ import annotations

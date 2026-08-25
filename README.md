@@ -2,16 +2,18 @@
 
 Trabalho final de Visão Computacional — pós-graduação em LLM e IA Generativa.
 
+<https://github.com/victormacaubas/project-image-processing>
+
 **Dataset:** Stanford Dogs (120 raças, 20.580 imagens)
 **Entrega:** sábado, 29/08/2026
 **Notebook final:** `notebooks/99_final.ipynb`
 
-- **[`docs/plan.md`](docs/plan.md)** — as decisões: problema, dataset, escopo, divisão
-- **[`docs/roteiro.md`](docs/roteiro.md)** — os passos, dia a dia. É por aqui que se trabalha.
+- **[`docs/roteiro.md`](docs/roteiro.md)** — os passos, dia a dia. É por aqui que se trabalha
+- **[`docs/plan.md`](docs/plan.md)** — as decisões e o porquê de cada uma
+- **[`docs/pytorch-basico.md`](docs/pytorch-basico.md)** — PyTorch em 20 min, para consulta
 
-> Os módulos em `src/dogs/` são **esqueletos**: assinaturas, docstrings com o que
-> implementar e as armadilhas conhecidas. Só `config.py` vem preenchido, por ser
-> configuração. O resto é trabalho de vocês.
+> `data.py`, `features.py`, `train.py` e `evaluate.py` estão implementados.
+> `models.py` é o único ainda em aberto — as docstrings dizem o que fazer.
 
 ## Setup
 
@@ -67,8 +69,15 @@ notebooks/
   04_analysis.ipynb   # Victor — E4
   99_final.ipynb      # entrega — montado na sexta
 
-reports/results.csv   # toda métrica de todo experimento
+reports/
+  results.csv         # toda métrica de todo experimento
+  predictions/*.npz   # logits + labels (~3 MB) — versionados
+  figures/*.png       # figuras do EDA e da análise — versionadas
 ```
+
+Os arquivos em `reports/` são leves e vão para o Git de propósito: é o que faz o
+notebook final rodar em ~2 min na correção, sem baixar nada. Embeddings e
+checkpoints ficam no Drive e só são necessários com `RETRAIN = True`.
 
 ## Experimentos
 
@@ -85,5 +94,5 @@ reports/results.csv   # toda métrica de todo experimento
 
 - Notebook nunca é commitado com output (`pre-commit install` cuida disso)
 - Lógica vai em `src/`, notebook só importa e chama
-- Todo resultado é registrado via `log_result()` em `reports/results.csv`
+- Todo experimento termina com `log_result()` **e** `save_predictions()`
 - O split de teste é avaliado **uma vez**, no fim. Até lá, só validação.

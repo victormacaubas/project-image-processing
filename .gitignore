@@ -1,18 +1,35 @@
+# ─── Artefatos pesados: NÃO versionar ───────────────────────────────────────
+# Ficam na pasta compartilhada do Drive. Só necessários com RETRAIN = True.
+#   data/    dataset bruto (~750 MB)
+#   *.npy    embeddings (~170 MB no total)
+#   *.pt     pesos treinados (~100 MB cada)
 data/
 checkpoints/
 *.npy
 *.pt
 *.pth
 
+# ─── Artefatos leves: SIM versionar ─────────────────────────────────────────
+# É o que permite ao notebook final rodar em ~2 min na correção, sem baixar
+# nada. Um checkpoint de ResNet50 tem ~100 MB; os logits que ele produz, ~3 MB
+# — e para refazer a análise, os logits bastam.
+#
+#   reports/results.csv        tabela de resultados
+#   reports/predictions/*.npz  logits + labels por experimento (~3 MB)
+#   reports/figures/*.png      figuras do EDA e da análise (~300 KB cada)
+#
+# Nenhum casa com as regras acima, então já são versionados. Não acrescente
+# regra que os exclua — sem as figuras, o notebook precisaria baixar o dataset
+# inteiro só para redesenhar os gráficos do EDA.
+
+# ─── Ambiente ───────────────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
 .ipynb_checkpoints/
 .venv/
 venv/
+*.egg-info/
 
 .DS_Store
 .vscode/
 .idea/
-
-reports/figures/*.png
-!reports/figures/.gitkeep

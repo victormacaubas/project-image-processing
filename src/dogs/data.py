@@ -1,52 +1,80 @@
 """Carregamento do Stanford Dogs, splits e transforms.
 
 Responsabilidade única: entregar DataLoaders corretos. Nenhum modelo aqui.
-
-STATUS: esqueleto. Implementar na segunda/terça — ver docs/roteiro.md, Passo 3.
 """
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
+from functools import lru_cache
 
-from torch.utils.data import DataLoader, Dataset
+import torch
+from torch.utils.data import DataLoader, Dataset, Subset
 from torchvision import transforms
 
+from dogs.config import (
+    HF_DATASET,
+    IMAGENET_MEAN,
+    IMAGENET_STD,
+    SEED,
+    TrainConfig,
+    dataset_cache_dir,
+    ensure_dirs,
+)
 
-def build_transforms(image_size: int, *, train: bool, augment: bool) -> transforms.Compose:
+logger = logging.getLogger(__name__)
+
+
+def build_transforms(
+    image_size: int, *, train: bool, augment: bool
+) -> transforms.Compose:
     """Pipeline de transformação de imagem.
 
-    Decisões a tomar aqui:
-      - Augmentation só quando train=True. Validação e teste precisam ser
-        determinísticos, senão as métricas variam entre execuções e a
-        comparação entre experimentos deixa de valer.
-      - Normalizar com IMAGENET_MEAN/IMAGENET_STD (já em config.py) sempre que
-        usar backbone pré-treinado.
-      - Para eval: Resize maior que image_size, depois CenterCrop.
-
-    Candidatos de augmentation: RandomResizedCrop, RandomHorizontalFlip,
-    ColorJitter. Cuidado com flip vertical — cão de cabeça pra baixo não
-    existe no mundo real e só atrapalha.
+    Augmentation só no treino. Validação e teste são sempre determinísticos —
+    caso contrário as métricas variam entre execuções e a comparação entre
+    experimentos deixa de valer.
     """
-    raise NotImplementedError
+    normalize = transforms.Normalize(mean=IMAGENET_MEAN, std=IMAGENET_STD)
+
+    if train and augment:
+        return transforms.Compose(
+            [
+                transforms.RandomResizedCrop(image_size, scale=(0.7, 1.0)),
+                transforms.RandomHorizontalFlip(),
+                transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2),
+                transforms.ToTensor(),
+                normalize,
+            ]
+        )
+
+    # 1.14 ≈ 256/224, a proporção usual de resize-then-crop em ImageNet.
+    return transforms.Compose(
+        [
+            transforms.Resize(int(image_size * 1.14)),
+            transforms.CenterCrop(image_size),
+            transforms.ToTensor(),
+            normalize,
+        ]
+    )
 
 
 class HFImageDataset(Dataset):
-    """Adapta um split do HuggingFace datasets para a interface do PyTorch.
-
-    Precisa implementar __len__ e __getitem__. No __getitem__: pegar o
-    registro, converter a imagem para RGB (algumas são grayscale e quebram
-    o batch), aplicar o transform, devolver (tensor, label).
-    """
+    """Adapta um split do HuggingFace datasets para a interface do PyTorch."""
 
     def __init__(self, hf_split, transform: transforms.Compose) -> None:
-        raise NotImplementedError
+        self._split = hf_split
+        self._transform = transform
 
     def __len__(self) -> int:
-        raise NotImplementedError
+        return len(self._split)
 
-    def __getitem__(self, index: int):
-        raise NotImplementedError
+    def __getitem__(self, index: int) -> tuple[torch.Tensor, int]:
+        record = self._split[int(index)]
+        # .convert("RGB") não é opcional: parte do dataset é grayscale, e sem
+        # isso o batch quebra com erro de shape difícil de rastrear.
+        image = record["image"].convert("RGB")
+        return self._transform(image), int(record["label"])
 
 
 @dataclass
@@ -63,21 +91,98 @@ class DataBundle:
         return len(self.class_names)
 
 
-def load_data(config) -> DataBundle:
+@lru_cache(maxsize=1)
+def _load_raw():
+    """Baixa (ou lê do cache) o dataset.
+
+    Memoizado: `load_data` é chamado várias vezes ao longo de um notebook e o
+    download de 776 MB não deve repetir.
+
+    Valida a estrutura antes de devolver. O dataset sugerido no enunciado
+    (`Voxel51/StanfordDogs`) é FiftyOne e devolveria imagens sem rótulo sem
+    levantar erro — as checagens abaixo transformam essa falha silenciosa em
+    uma mensagem clara.
+    """
+    from datasets import load_dataset
+
+    ensure_dirs()
+    cache = dataset_cache_dir()
+    logger.info("Carregando %s (cache: %s)", HF_DATASET, cache)
+    dataset = load_dataset(HF_DATASET, cache_dir=str(cache))
+
+    faltando = {"train", "test"} - set(dataset.keys())
+    if faltando:
+        raise RuntimeError(
+            f"Splits ausentes em {HF_DATASET}: {faltando}. "
+            f"Disponíveis: {list(dataset)}.\n"
+            "Datasets no formato FiftyOne trazem tudo num split só e sem "
+            "rótulos — confira se HF_DATASET aponta para um dataset parquet."
+        )
+
+    features = dataset["train"].features
+    if "label" not in features or "image" not in features:
+        raise RuntimeError(
+            f"{HF_DATASET} não tem as colunas esperadas. "
+            f"Encontradas: {list(features)}; esperadas: 'image' e 'label'."
+        )
+    if not hasattr(features["label"], "names"):
+        raise RuntimeError(
+            f"A coluna 'label' de {HF_DATASET} não é ClassLabel "
+            f"(é {type(features['label']).__name__}), então não há nomes de classe."
+        )
+
+    return dataset
+
+
+def load_data(config: TrainConfig) -> DataBundle:
     """Baixa o dataset, faz o split e devolve os DataLoaders.
 
-    Regras que não podem ser violadas:
-      - O split de validação sai do TREINO, nunca do teste.
-      - O teste é tocado uma única vez, no fim do projeto.
-      - Usar SEED de config.py no gerador do shuffle, senão o split muda
-        entre execuções e os experimentos param de ser comparáveis.
-
-    Passos:
-      1. load_dataset(HF_DATASET, cache_dir=RAW_DIR)
-      2. Extrair class_names de dataset["train"].features["label"].names
-      3. Construir os transforms (treino com augment, eval sem)
-      4. Permutar índices com generator semeado, cortar em val_fraction
-      5. Envolver em Subset + HFImageDataset
-      6. Montar os três DataLoaders (shuffle só no treino)
+    O split de validação sai do TREINO, nunca do teste. O teste é tocado uma
+    única vez, no fim do projeto.
     """
-    raise NotImplementedError
+    dataset = _load_raw()
+    class_names = list(dataset["train"].features["label"].names)
+
+    train_transform = build_transforms(
+        config.image_size, train=True, augment=config.use_augmentation
+    )
+    eval_transform = build_transforms(config.image_size, train=False, augment=False)
+
+    full_train = dataset["train"]
+
+    # Gerador semeado: sem isso o split muda entre execuções e os experimentos
+    # deixam de ser comparáveis — um bug que só aparece tarde demais.
+    generator = torch.Generator().manual_seed(SEED)
+    permutation = torch.randperm(len(full_train), generator=generator).tolist()
+    split_at = int(len(full_train) * (1 - config.val_fraction))
+
+    train_ds = Subset(HFImageDataset(full_train, train_transform), permutation[:split_at])
+    val_ds = Subset(HFImageDataset(full_train, eval_transform), permutation[split_at:])
+    test_ds = HFImageDataset(dataset["test"], eval_transform)
+
+    logger.info(
+        "Split: treino=%d val=%d teste=%d | %d classes",
+        len(train_ds),
+        len(val_ds),
+        len(test_ds),
+        len(class_names),
+    )
+
+    def make_loader(source: Dataset, *, shuffle: bool, drop_last: bool = False) -> DataLoader:
+        return DataLoader(
+            source,
+            batch_size=config.batch_size,
+            shuffle=shuffle,
+            num_workers=config.num_workers,
+            pin_memory=torch.cuda.is_available(),
+            drop_last=drop_last,
+            persistent_workers=config.num_workers > 0,
+        )
+
+    return DataBundle(
+        # drop_last no treino evita batch de tamanho 1, que quebra o BatchNorm.
+        train_loader=make_loader(train_ds, shuffle=True, drop_last=True),
+        val_loader=make_loader(val_ds, shuffle=False),
+        test_loader=make_loader(test_ds, shuffle=False),
+        class_names=class_names,
+    )

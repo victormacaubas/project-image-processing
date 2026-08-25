@@ -40,9 +40,20 @@ dataset ignora isso; mencionar demonstra maturidade.
 
 **Stanford Dogs** — 20.580 imagens, 120 raças, ~150-250 imagens por classe.
 
-- Fonte: `https://huggingface.co/datasets/Voxel51/StanfordDogs`
+- Fonte: `https://huggingface.co/datasets/maurice-fp/stanford-dogs` (~776 MB)
 - Split oficial: 12.000 treino / 8.580 teste
 - Vamos separar 15% do treino como validação (o teste só é tocado uma vez, no fim)
+
+> **Por que não usamos o link do enunciado.** O sugerido foi
+> `Voxel51/StanfordDogs`, que está no formato **FiftyOne**, não no formato
+> padrão do HuggingFace. Chamar `load_dataset()` nele não levanta erro, mas
+> devolve as 20.580 imagens **sem rótulo algum** e num split único — falha
+> silenciosa, que só apareceria na hora de treinar.
+>
+> `maurice-fp/stanford-dogs` é o mesmo dataset em parquet, com o split oficial
+> 12.000/8.580, coluna `label` do tipo `ClassLabel` e os nomes originais das
+> raças preservados (`n02085620-Chihuahua`). Vale mencionar essa troca na seção
+> de metodologia: é uma decisão real de engenharia de dados.
 
 Dataset pequeno por classe — exatamente o cenário onde transfer learning importa.
 

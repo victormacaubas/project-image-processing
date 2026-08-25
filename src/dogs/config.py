@@ -34,6 +34,11 @@ REPORTS_DIR = PROJECT_ROOT / "reports"
 FIGURES_DIR = REPORTS_DIR / "figures"
 RESULTS_CSV = REPORTS_DIR / "results.csv"
 
+# Logits + labels de cada experimento (~3 MB comprimido). Vão para o Git: é o
+# que permite ao notebook final reproduzir toda a análise sem baixar
+# checkpoints. Ver save_predictions() em evaluate.py.
+PREDICTIONS_DIR = REPORTS_DIR / "predictions"
+
 
 # ─── Ambiente ───────────────────────────────────────────────────────────────
 def in_colab() -> bool:
@@ -56,6 +61,24 @@ def drive_mounted() -> bool:
     return Path("/content/drive/MyDrive").is_dir()
 
 
+def dataset_cache_dir() -> Path:
+    """Onde o dataset baixado fica.
+
+    No Colab, `/content` é disco efêmero: some quando a sessão desconecta, e o
+    download de 776 MB teria que ser refeito toda vez. Se o Drive estiver
+    montado, o cache vai para lá e o download acontece uma única vez.
+
+    Fora do Colab, usa `data/raw` do próprio repositório.
+    """
+    if (cache := drive_cache_dir()) is not None:
+        destino = cache / "hf_cache"
+        destino.mkdir(parents=True, exist_ok=True)
+        return destino
+
+    RAW_DIR.mkdir(parents=True, exist_ok=True)
+    return RAW_DIR
+
+
 def drive_cache_dir() -> Path | None:
     """Pasta de cache no Drive, ou None se indisponível.
 
@@ -72,7 +95,14 @@ def drive_cache_dir() -> Path | None:
 
 
 # ─── Dataset ────────────────────────────────────────────────────────────────
-HF_DATASET = "Voxel51/StanfordDogs"
+# ATENÇÃO: não trocar por "Voxel51/StanfordDogs" (o sugerido no enunciado).
+# Aquele é um dataset FiftyOne: load_dataset() não dá erro, mas devolve as
+# 20.580 imagens SEM rótulo e num split único. Falha silenciosa — o pior tipo.
+#
+# Este aqui é parquet padrão, com o split oficial 12.000/8.580, coluna `label`
+# do tipo ClassLabel e os nomes originais das raças preservados
+# ("n02085620-Chihuahua"). Download de ~776 MB.
+HF_DATASET = "maurice-fp/stanford-dogs"
 NUM_CLASSES = 120
 SEED = 42
 
@@ -116,6 +146,7 @@ def ensure_dirs() -> None:
         CHECKPOINT_DIR,
         REPORTS_DIR,
         FIGURES_DIR,
+        PREDICTIONS_DIR,
     ):
         directory.mkdir(parents=True, exist_ok=True)
 
