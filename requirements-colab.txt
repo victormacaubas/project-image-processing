@@ -1,0 +1,11 @@
+# Dependências que o Colab NÃO traz pré-instalado.
+#
+# Por que este arquivo existe: o Colab já vem com torch, torchvision, numpy,
+# pandas, matplotlib, seaborn, scikit-learn, pillow e tqdm. Reinstalar qualquer
+# um deles via pip costuma disparar a mensagem "restart runtime", que aborta a
+# execução de ponta a ponta — exatamente o que quebra na hora da correção.
+#
+# Regra: só acrescente algo aqui depois de confirmar, num Colab limpo, que o
+# import realmente falha sem instalar.
+
+datasets>=2.18,<4

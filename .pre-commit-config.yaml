@@ -1,0 +1,18 @@
+# Instalar uma vez, cada um na sua máquina:
+#   pip install pre-commit nbstripout && pre-commit install
+#
+# O hook do nbstripout é o que evita conflito de merge em notebook.
+# Sem ele, dois commits no mesmo .ipynb viram um pesadelo — e vocês têm 5 dias.
+repos:
+  - repo: https://github.com/kynan/nbstripout
+    rev: 0.7.1
+    hooks:
+      - id: nbstripout
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-added-large-files
+        args: ["--maxkb=5000"]
