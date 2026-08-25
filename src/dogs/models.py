@@ -1,6 +1,6 @@
 """Definições de modelo para cada experimento.
 
-STATUS: esqueleto. SmallCNN e LinearProbe são do parceiro (Passo 6 e 7 do
+STATUS: esqueleto. SmallCNN e LinearProbe são da Mari (Passo 6 e 7 do
 roteiro); build_finetune_model é do Victor (Passo 8).
 """
 

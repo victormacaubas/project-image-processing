@@ -2,7 +2,7 @@
 
 Este é o módulo que destrava o cronograma. Roda uma vez (~5-8 min na GPU do
 Colab); depois disso qualquer classificador linear treina em segundos na CPU,
-e o parceiro fica autônomo sem precisar de GPU.
+e a Mari fica autônoma sem precisar de GPU.
 
 PRIORIDADE MÁXIMA DA TERÇA. Enquanto os embeddings não existirem, E2 e E5
 estão bloqueados.

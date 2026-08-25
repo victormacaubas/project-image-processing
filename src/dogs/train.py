@@ -5,7 +5,7 @@ experimentos seja honesta — mesma lógica de early stopping, mesmo critério
 de seleção de checkpoint, mesmas métricas.
 
 STATUS: esqueleto. Tarefa do Victor, Passo 5 do roteiro. Precisa estar pronto
-antes de E1 — o parceiro depende dele.
+antes de E1 — a Mari depende dele.
 """
 
 from __future__ import annotations

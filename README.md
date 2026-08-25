@@ -61,8 +61,8 @@ src/dogs/
   evaluate.py   # métricas, results.csv, análise de erros
 
 notebooks/
-  01_eda.ipynb        # parceiro
-  02_baseline.ipynb   # parceiro — E1 e E2
+  01_eda.ipynb        # Mari
+  02_baseline.ipynb   # Mari — E1 e E2
   03_finetune.ipynb   # Victor — E3
   04_analysis.ipynb   # Victor — E4
   99_final.ipynb      # entrega — montado na sexta
@@ -74,8 +74,8 @@ reports/results.csv   # toda métrica de todo experimento
 
 | ID | O quê | Dono | Status |
 |---|---|---|---|
-| E1 | CNN do zero | Parceiro | ⬜ |
-| E2 | Linear probe (backbone congelado) | Parceiro | ⬜ |
+| E1 | CNN do zero | Mari | ⬜ |
+| E2 | Linear probe (backbone congelado) | Mari | ⬜ |
 | E3 | Fine-tuning parcial | Victor | ⬜ |
 | E4 | Análise de erros | Victor | ⬜ |
 | E5 | Segundo backbone *(bônus)* | — | ⬜ |

@@ -86,8 +86,8 @@ Consequências:
 
 1. E2, E5 e boa parte da análise viram experimentos instantâneos — dá pra iterar dezenas
    de vezes numa tarde.
-2. **Seu parceiro consegue trabalhar sem GPU e sem depender de você.** Você gera os
-   embeddings na terça de manhã, sobe no Drive compartilhado, e ele fica autônomo.
+2. **A Mari consegue trabalhar sem GPU e sem depender de você.** Você gera os
+   embeddings na terça de manhã, sobe no Drive compartilhado, e ela fica autônoma.
 
 O único treino caro é E3 (fine-tuning), que roda uma ou duas vezes.
 
@@ -97,7 +97,7 @@ Isso é o que torna 5 dias viável.
 
 ## 5. Cronograma
 
-| Dia | Victor | Parceiro | Marco |
+| Dia | Victor | Mari | Marco |
 |---|---|---|---|
 | **Seg 24** | Repo, `data.py`, download do dataset, split | Ambiente Colab funcionando, roda o notebook de EDA | Dataset carregando |
 | **Ter 25** | `features.py` → **gerar e subir embeddings no Drive** (prioridade máxima da semana) | EDA: distribuição de classes, grid de imagens, tamanhos, exemplos de classes parecidas | **Embeddings prontos até o fim do dia** |
@@ -116,23 +116,23 @@ e modesto vale mais que um ambicioso pela metade.
 
 ## 6. Divisão do trabalho
 
-Seu parceiro tem menos experiência, então a divisão dá a ele tarefas **bem delimitadas
+A Mari tem menos experiência, então a divisão dá a ela tarefas **bem delimitadas
 com critério de pronto claro**, e a você tudo que é infraestrutura ou pode travar o
 outro.
 
 ### Victor — infraestrutura e modelagem pesada
 
 - `src/dogs/data.py` — download, splits, transforms, DataLoaders
-- `src/dogs/features.py` — extração de embeddings (**bloqueia o parceiro, faz primeiro**)
+- `src/dogs/features.py` — extração de embeddings (**bloqueia a Mari, faz primeiro**)
 - `src/dogs/train.py` — loop de treino, early stopping, checkpoints
 - E3 fine-tuning
 - E4 análise de erros
 - Montagem do notebook final e revisão dos números
 
-### Parceiro — experimentos guiados e narrativa
+### Mari — experimentos guiados e narrativa
 
 - EDA e visualizações (`notebooks/01_eda.ipynb`)
-- E1 — CNN do zero (tarefa didática: ele constrói a arquitetura)
+- E1 — CNN do zero (tarefa didática: ela constrói a arquitetura)
 - E2 — linear probe sobre os embeddings que você gerou
 - Tabela consolidada de resultados
 - Primeira versão do texto de todas as seções
