@@ -34,49 +34,8 @@ Se a Mari nunca usou PyTorch, o **Apêndice A** é pré-requisito dos Passos 6-8
 ### Passo 1 · Combinar com a Mari 🔵🟢 · 30 min
 
 - [x] Criar o repo no GitHub
-- [ ] Dar acesso de escrita à Mari (Settings → Collaborators)
+- [x] Dar acesso de escrita à Mari (Settings → Collaborators)
 - [ ] Criar a pasta compartilhada no Drive (onde os embeddings vão morar)
-- [ ] Mandar a mensagem abaixo para ela
-- [ ] Marcar o call diário de 15 min (sugestão: 19h)
-
-#### Mensagem para a Mari — copiar e colar
-
-> Fechei a estrutura do nosso trabalho de Visão Computacional. Prazo: **sábado**,
-> então o escopo está enxuto de propósito.
->
-> **O que vamos fazer:** classificar 120 raças de cães (Stanford Dogs). Três
-> experimentos em progressão — CNN treinada do zero, depois transfer learning com
-> backbone congelado, depois fine-tuning — e uma análise de erros no fim.
->
-> **Repo:** `<COLE A URL AQUI>`
->
-> Comece por dois documentos:
->
-> - `docs/plan.md` — as decisões e o porquê de cada uma (leitura de 10 min)
-> - `docs/roteiro.md` — os passos dia a dia. **Suas tarefas são as marcadas 🟢**:
->   Passos 2, 6, 7, 8, 11 e 14.
->
-> **Antes de qualquer código**, leia o **Apêndice A** no fim do roteiro. São 20
-> minutos de PyTorch essencial: tensor, Dataset/DataLoader, nn.Module, o loop de
-> treino e os erros clássicos. Escrevi pensando em quem programa em Python mas
-> nunca mexeu em PyTorch. Vai economizar horas.
->
-> **Hoje (seg):** só o Passo 2 — deixar o ambiente rodando (~45 min). O
-> importante é o `pre-commit install`; sem ele, nossos commits em notebook viram
-> conflito impossível.
->
-> **Amanhã (ter):** Passo 6, a análise exploratória. Independente do meu trabalho,
-> pode tocar sozinha.
->
-> Cada tarefa no roteiro tem "Pronto quando" — é o critério objetivo, não precisa
-> adivinhar se terminou. E se travar mais de 30 minutos em qualquer coisa, me
-> chama. Com cinco dias, ficar travado calado é o maior risco que a gente tem.
->
-> Call rápido hoje à noite pra alinhar?
-
-**Pronto quando:** ela confirmou acesso ao repo e leu o Apêndice A.
-
----
 
 ### Passo 2 · Ambiente 🔵🟢 · 45 min
 
