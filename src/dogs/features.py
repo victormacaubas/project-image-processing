@@ -1,12 +1,4 @@
-"""Extração e cache de embeddings de backbones congelados.
-
-Este é o módulo que destrava o cronograma. Roda uma vez (~5-8 min na GPU do
-Colab); depois disso qualquer classificador linear treina em segundos na CPU,
-e a Mari fica autônoma sem precisar de GPU.
-
-Uso:
-    python -m dogs.features --backbone resnet50
-"""
+"""Extração e cache de embeddings de backbones pré-treinados."""
 
 from __future__ import annotations
 
@@ -32,12 +24,7 @@ def get_device() -> torch.device:
 
 
 def build_backbone(name: str) -> tuple[nn.Module, int]:
-    """Devolve (backbone sem cabeça de classificação, dimensão da saída).
-
-    O padrão é o mesmo nas três arquiteturas: guardar `in_features` da camada
-    final e substituí-la por `nn.Identity()`, para que o forward devolva o
-    embedding em vez dos logits de ImageNet.
-    """
+    """Cria um backbone pré-treinado que retorna embeddings e sua dimensão."""
     from torchvision import models
 
     if name == "resnet50":
@@ -64,7 +51,7 @@ def build_backbone(name: str) -> tuple[nn.Module, int]:
 def extract(
     model: nn.Module, loader: DataLoader, device: torch.device, *, log_every: int = 20
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Passa o loader inteiro pelo backbone e devolve (embeddings, labels)."""
+    """Extrai embeddings e rótulos de todos os batches de um data loader."""
     model.eval()
     model.to(device)
 
@@ -75,7 +62,6 @@ def extract(
 
     for index, (images, targets) in enumerate(loader, start=1):
         output = model(images.to(device, non_blocking=True))
-        # Para CPU e NumPy já aqui: acumular na GPU estoura a VRAM.
         features.append(output.float().cpu().numpy())
         labels.append(targets.numpy())
 
@@ -88,7 +74,7 @@ def extract(
 
 
 def feature_paths(backbone: str, split: str) -> tuple:
-    """Caminhos dos .npy de um par (backbone, split)."""
+    """Retorna caminhos dos arquivos de embeddings e rótulos de um split."""
     return (
         FEATURES_DIR / f"{backbone}_{split}_X.npy",
         FEATURES_DIR / f"{backbone}_{split}_y.npy",
@@ -96,11 +82,7 @@ def feature_paths(backbone: str, split: str) -> tuple:
 
 
 def load_features(backbone: str = "resnet50", split: str = "train"):
-    """Carrega embeddings salvos. Usado pela Mari no E2.
-
-    Devolve (X, y) como arrays NumPy. Levanta erro explícito se os arquivos
-    ainda não existirem — melhor que um FileNotFoundError sem contexto.
-    """
+    """Carrega os arrays salvos de embeddings e rótulos de um split."""
     path_x, path_y = feature_paths(backbone, split)
     if not path_x.exists():
         raise FileNotFoundError(
@@ -133,8 +115,6 @@ def main() -> None:
     )
     ensure_dirs()
 
-    # use_augmentation=False não é opcional: com augmentation o embedding de uma
-    # mesma imagem mudaria a cada execução, e o cache perderia o sentido.
     config = TrainConfig(
         experiment_name=f"features_{args.backbone}",
         batch_size=args.batch_size,

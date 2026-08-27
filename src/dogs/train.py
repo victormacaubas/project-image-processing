@@ -1,9 +1,4 @@
-"""Loop de treino compartilhado por todos os experimentos.
-
-Um único loop, usado por E1, E2 e E3. Isso garante que a comparação entre
-experimentos seja honesta — mesma lógica de early stopping, mesmo critério de
-seleção de checkpoint, mesmas métricas.
-"""
+"""Loop compartilhado de treinamento e carregamento de checkpoints."""
 
 from __future__ import annotations
 
@@ -49,19 +44,13 @@ def train_model(
     config: TrainConfig,
     device: torch.device | None = None,
 ) -> TrainResult:
-    """Treina com early stopping na acurácia top-1 de validação.
-
-    Salva o checkpoint do melhor epoch, não do último — o último costuma estar
-    mais overfitado.
-    """
+    """Treina um modelo e salva o checkpoint com melhor top-1 de validação."""
     ensure_dirs()
     device = get_device(device)
     model.to(device)
 
     criterion = nn.CrossEntropyLoss(label_smoothing=0.1)
 
-    # Só os parâmetros treináveis. Passar parâmetros congelados ao otimizador é
-    # um bug silencioso: não treina, mas carrega estado de momento à toa.
     trainable = [p for p in model.parameters() if p.requires_grad]
     if not trainable:
         raise ValueError("Nenhum parâmetro com requires_grad=True — nada a treinar.")
@@ -163,7 +152,7 @@ def train_model(
 
 
 def load_checkpoint(model: nn.Module, config: TrainConfig, device=None) -> nn.Module:
-    """Carrega os pesos do melhor epoch salvo. Usado com RETRAIN = False."""
+    """Carrega no modelo o checkpoint salvo com melhor resultado."""
     path = config.checkpoint_path()
     if not path.exists():
         raise FileNotFoundError(

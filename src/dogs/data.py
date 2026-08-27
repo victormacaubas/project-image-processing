@@ -1,7 +1,4 @@
-"""Carregamento do Stanford Dogs, splits e transforms.
-
-Responsabilidade única: entregar DataLoaders corretos. Nenhum modelo aqui.
-"""
+"""Carregamento, divisão e transformações de imagem do Stanford Dogs."""
 
 from __future__ import annotations
 
@@ -29,12 +26,7 @@ logger = logging.getLogger(__name__)
 def build_transforms(
     image_size: int, *, train: bool, augment: bool
 ) -> transforms.Compose:
-    """Pipeline de transformação de imagem.
-
-    Augmentation só no treino. Validação e teste são sempre determinísticos —
-    caso contrário as métricas variam entre execuções e a comparação entre
-    experimentos deixa de valer.
-    """
+    """Cria transformações de treinamento ou de avaliação determinística."""
     normalize = transforms.Normalize(mean=IMAGENET_MEAN, std=IMAGENET_STD)
 
     if train and augment:
@@ -48,7 +40,6 @@ def build_transforms(
             ]
         )
 
-    # 1.14 ≈ 256/224, a proporção usual de resize-then-crop em ImageNet.
     return transforms.Compose(
         [
             transforms.Resize(int(image_size * 1.14)),
@@ -60,7 +51,7 @@ def build_transforms(
 
 
 class HFImageDataset(Dataset):
-    """Adapta um split do HuggingFace datasets para a interface do PyTorch."""
+    """Adapta um split do Hugging Face à interface de datasets do PyTorch."""
 
     def __init__(self, hf_split, transform: transforms.Compose) -> None:
         self._split = hf_split
@@ -71,15 +62,13 @@ class HFImageDataset(Dataset):
 
     def __getitem__(self, index: int) -> tuple[torch.Tensor, int]:
         record = self._split[int(index)]
-        # .convert("RGB") não é opcional: parte do dataset é grayscale, e sem
-        # isso o batch quebra com erro de shape difícil de rastrear.
         image = record["image"].convert("RGB")
         return self._transform(image), int(record["label"])
 
 
 @dataclass
 class DataBundle:
-    """Tudo que um experimento precisa em matéria de dados."""
+    """Data loaders e rótulos de classe de um experimento de treinamento."""
 
     train_loader: DataLoader
     val_loader: DataLoader
@@ -93,16 +82,7 @@ class DataBundle:
 
 @lru_cache(maxsize=1)
 def _load_raw():
-    """Baixa (ou lê do cache) o dataset.
-
-    Memoizado: `load_data` é chamado várias vezes ao longo de um notebook e o
-    download de 776 MB não deve repetir.
-
-    Valida a estrutura antes de devolver. O dataset sugerido no enunciado
-    (`Voxel51/StanfordDogs`) é FiftyOne e devolveria imagens sem rótulo sem
-    levantar erro — as checagens abaixo transformam essa falha silenciosa em
-    uma mensagem clara.
-    """
+    """Carrega e valida o dataset do Hugging Face armazenado em cache."""
     from datasets import load_dataset
 
     ensure_dirs()
@@ -135,11 +115,7 @@ def _load_raw():
 
 
 def load_data(config: TrainConfig) -> DataBundle:
-    """Baixa o dataset, faz o split e devolve os DataLoaders.
-
-    O split de validação sai do TREINO, nunca do teste. O teste é tocado uma
-    única vez, no fim do projeto.
-    """
+    """Cria data loaders com uma divisão treino-validação determinística."""
     dataset = _load_raw()
     class_names = list(dataset["train"].features["label"].names)
 
@@ -150,8 +126,6 @@ def load_data(config: TrainConfig) -> DataBundle:
 
     full_train = dataset["train"]
 
-    # Gerador semeado: sem isso o split muda entre execuções e os experimentos
-    # deixam de ser comparáveis — um bug que só aparece tarde demais.
     generator = torch.Generator().manual_seed(SEED)
     permutation = torch.randperm(len(full_train), generator=generator).tolist()
     split_at = int(len(full_train) * (1 - config.val_fraction))
@@ -180,7 +154,6 @@ def load_data(config: TrainConfig) -> DataBundle:
         )
 
     return DataBundle(
-        # drop_last no treino evita batch de tamanho 1, que quebra o BatchNorm.
         train_loader=make_loader(train_ds, shuffle=True, drop_last=True),
         val_loader=make_loader(val_ds, shuffle=False),
         test_loader=make_loader(test_ds, shuffle=False),

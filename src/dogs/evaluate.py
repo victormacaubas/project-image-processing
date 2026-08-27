@@ -1,8 +1,4 @@
-"""Métricas e análise de erros.
-
-Todo experimento reporta as mesmas métricas pelo mesmo caminho. Sem isso, a
-tabela final de comparação não tem valor.
-"""
+"""Avaliação de modelos, cálculo de métricas e análise de erros."""
 
 from __future__ import annotations
 
@@ -39,11 +35,7 @@ class Metrics:
 def predict(
     model: nn.Module, loader: DataLoader, device: torch.device
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Devolve (logits, labels) para o loader inteiro.
-
-    Separado de `evaluate()` de propósito: a análise de erros precisa dos
-    logits crus, não só das métricas agregadas.
-    """
+    """Retorna logits e rótulos de todos os batches de um data loader."""
     model.eval()
     model.to(device)
 
@@ -59,11 +51,7 @@ def predict(
 
 
 def metrics_from_logits(logits: np.ndarray, labels: np.ndarray) -> Metrics:
-    """Calcula as quatro métricas a partir dos logits.
-
-    Recebe arrays NumPy em vez de um modelo para que a mesma função sirva à
-    avaliação durante o treino e à análise de erros posterior.
-    """
+    """Calcula métricas de classificação a partir de logits e rótulos."""
     from sklearn.metrics import f1_score
 
     if logits.shape[0] != labels.shape[0]:
@@ -73,8 +61,6 @@ def metrics_from_logits(logits: np.ndarray, labels: np.ndarray) -> Metrics:
 
     predictions = logits.argmax(axis=1)
 
-    # top-5: os 5 maiores por linha. argpartition é O(n) e basta aqui, já que
-    # não importa a ordem dentro do top-5 — só a pertinência.
     k = min(5, logits.shape[1])
     top_k = np.argpartition(-logits, kth=k - 1, axis=1)[:, :k]
     top5_hit = (top_k == labels[:, None]).any(axis=1)
@@ -92,18 +78,13 @@ def metrics_from_logits(logits: np.ndarray, labels: np.ndarray) -> Metrics:
 
 
 def evaluate(model: nn.Module, loader: DataLoader, device: torch.device) -> Metrics:
-    """Conveniência: predict() + metrics_from_logits()."""
+    """Avalia um modelo em um data loader."""
     logits, labels = predict(model, loader, device)
     return metrics_from_logits(logits, labels)
 
 
 def log_result(experiment_name: str, split: str, metrics: Metrics, notes: str = "") -> None:
-    """Acrescenta uma linha em reports/results.csv.
-
-    Resultado que não foi registrado não existe. Chame sempre que terminar um
-    experimento, inclusive quando o número for ruim — resultado ruim também
-    entra no relatório.
-    """
+    """Acrescenta as métricas de um experimento ao CSV de resultados."""
     ensure_dirs()
     is_new = not RESULTS_CSV.exists()
 
@@ -131,16 +112,12 @@ def log_result(experiment_name: str, split: str, metrics: Metrics, notes: str = 
 def most_confused_pairs(
     logits: np.ndarray, labels: np.ndarray, class_names: list[str], top_n: int = 20
 ) -> list[tuple[str, str, int]]:
-    """Pares (classe verdadeira, classe prevista) mais confundidos.
-
-    Base do experimento E4. Uma matriz 120x120 é ilegível; o que interessa é
-    quais raças o modelo troca entre si, e se essas trocas fazem sentido visual.
-    """
+    """Retorna as confusões mais frequentes entre classe real e prevista."""
     from sklearn.metrics import confusion_matrix
 
     predictions = logits.argmax(axis=1)
     matrix = confusion_matrix(labels, predictions, labels=range(len(class_names)))
-    np.fill_diagonal(matrix, 0)  # acertos não interessam aqui
+    np.fill_diagonal(matrix, 0)
 
     flat_order = np.argsort(matrix, axis=None)[::-1][:top_n]
 
@@ -149,7 +126,7 @@ def most_confused_pairs(
         true_index, predicted_index = np.unravel_index(flat_index, matrix.shape)
         count = int(matrix[true_index, predicted_index])
         if count == 0:
-            break  # ordenado: daqui em diante é tudo zero
+            break
         pairs.append((class_names[true_index], class_names[predicted_index], count))
 
     return pairs
@@ -158,17 +135,7 @@ def most_confused_pairs(
 def save_predictions(
     experiment_name: str, split: str, logits: np.ndarray, labels: np.ndarray
 ) -> "Path":
-    """Salva logits e labels comprimidos em reports/predictions/.
-
-    Por que isso existe: a análise de erros, a tabela de resultados e todos os
-    gráficos do notebook final precisam apenas dos logits — não do modelo. Um
-    arquivo destes tem ~3 MB comprimido, contra ~100 MB de um checkpoint de
-    ResNet50.
-
-    Consequência prática: estes arquivos **vão para o Git**, e o notebook final
-    reproduz toda a análise sem baixar nada de lugar nenhum. Checkpoints e
-    embeddings passam a ser necessários só com RETRAIN = True.
-    """
+    """Salva logits e rótulos comprimidos de um split do dataset."""
     ensure_dirs()
     path = PREDICTIONS_DIR / f"{experiment_name}_{split}.npz"
     np.savez_compressed(path, logits=logits.astype(np.float32), labels=labels)
@@ -178,7 +145,7 @@ def save_predictions(
 
 
 def load_predictions(experiment_name: str, split: str) -> tuple[np.ndarray, np.ndarray]:
-    """Carrega logits e labels salvos por `save_predictions`."""
+    """Carrega logits e rótulos salvos de um split do dataset."""
     path = PREDICTIONS_DIR / f"{experiment_name}_{split}.npz"
     if not path.exists():
         disponiveis = sorted(p.stem for p in PREDICTIONS_DIR.glob("*.npz"))
@@ -195,12 +162,7 @@ def load_predictions(experiment_name: str, split: str) -> tuple[np.ndarray, np.n
 def hardest_examples(
     logits: np.ndarray, labels: np.ndarray, top_n: int = 10
 ) -> list[tuple[int, float, int]]:
-    """Índices das amostras com maior perda individual.
-
-    Devolve (índice, loss, classe_prevista), da pior para a melhor. Olhar essas
-    imagens uma a uma costuma revelar rótulo errado, dois cães na mesma foto ou
-    o cão pequeno demais no quadro — material direto para a seção de limitações.
-    """
+    """Retorna índices, perdas e previsões ordenados por perda."""
     per_sample = nn.functional.cross_entropy(
         torch.from_numpy(logits).float(),
         torch.from_numpy(labels).long(),
