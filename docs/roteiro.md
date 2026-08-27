@@ -15,6 +15,28 @@ quando ele for atendido.
 | [`pytorch-basico.md`](pytorch-basico.md) | PyTorch em 20 min — **leia antes dos Passos 5-7** |
 | docstrings em `src/dogs/` | como cada função funciona |
 
+## Como trabalhamos no notebook
+
+O `99_final.ipynb` é **o documento de trabalho e a entrega ao mesmo tempo**. Em
+vez de montar tudo no fim, cada resultado entra nele assim que fica pronto. A
+célula de estado mostra o que já existe e o que falta.
+
+Os notebooks numerados (`01_eda`, `02_baseline`, ...) continuam sendo o lugar da
+experimentação suja: testar hiperparâmetro, rodar 15 epochs, errar. Só o
+resultado limpo migra para o final.
+
+**Três regras para não gerar conflito de merge:**
+
+1. **Preencha células que já existem, não crie novas.** O esqueleto já tem todas
+   as seções. Se precisar mesmo de uma célula nova, avise no call.
+2. **`git pull` antes de editar, `git push` logo depois.** Não acumule um dia de
+   trabalho sem subir.
+3. **Nunca commite com output.** O `pre-commit install` cuida disso; sem ele, um
+   notebook com gráficos vira conflito impossível.
+
+Na prática vocês editam partes distantes — Mari nas células de texto, Victor nas
+de código — então o git resolve sozinho quase sempre.
+
 ---
 
 ## Visão geral
@@ -22,11 +44,11 @@ quando ele for atendido.
 | Dia | Victor 🔵 | Mari 🟢 |
 |---|---|---|
 | ~~Seg~~ | ~~repo + módulos~~ **feito** | — |
-| **Ter** | 1 🔴 embeddings · 8 fine-tuning | 2 ambiente · 4 EDA |
-| **Qua** | 8 terminar · 9 análise de erros | 5 E1 · 6 E2 |
-| **Qui** | 10 montar notebook | 7 texto (1-3) |
-| **Sex** | 11 testar entrega | 7 texto (4-7) |
-| **Sáb** | 12 revisão e entrega | 12 |
+| **Ter** | 1 🔴 embeddings · 3 fine-tuning | 2 ambiente · 4 EDA |
+| **Qua** | 3 terminar · 7 análise de erros | 5 E1 · 6 E2 |
+| **Qui** | 9 fechar notebook | 8 texto (1-3) |
+| **Sex** | 11 testar entrega | 10 texto (4-7) |
+| **Sáb** | revisão cruzada e entrega | revisão cruzada |
 
 **O gargalo é o Passo 1.** Enquanto os embeddings não subirem, a Mari não faz o
 E2 e depende de GPU pra tudo.
@@ -51,23 +73,43 @@ Extrair os vetores de 2048 dimensões que a ResNet50 produz para cada imagem.
 Depois disso, a Mari treina classificadores em segundos, na CPU, sem depender
 de você nem de GPU.
 
-**No Colab:**
+Abra o **`99_final.ipynb`** no Colab (badge no README). Antes de tudo:
+`Ambiente de execução` → `Alterar o tipo` → **T4 GPU**. Sem isso a extração leva
+horas em vez de minutos.
 
-1. `Ambiente de execução` → `Alterar o tipo` → **T4 GPU**
-2. Montar o Drive: `drive.mount('/content/drive')`
-   *Não é opcional: `/content` é efêmero e o dataset tem 776 MB. Com o Drive
-   montado, o download acontece uma vez só.*
-3. `!git clone <repo>` → `%cd project-image-processing` →
-   `!pip install -q -r requirements-colab.txt`
-4. `sys.path.insert(0, 'src')` e conferir com `describe_environment()` —
-   precisa mostrar GPU e Drive montado
-5. **Validar o `data.py`:** `load_data()` e puxar o primeiro lote.
-   Esperado: `[64, 3, 224, 224]`, `[64]`, 120 classes, nomes como
-   `n02085620-Chihuahua`. O download acontece aqui (~5-10 min).
-6. `!python -m dogs.features --backbone resnet50` (~8 min)
-7. Copiar `data/processed/features/*.npy` para
-   `/content/drive/MyDrive/project-image-processing/features/`
-8. Avisar a Mari
+Rode as células 1-3 (bootstrap e verificação) e depois, numa célula nova:
+
+**a) Montar o Drive** — evita rebaixar 776 MB a cada sessão:
+
+    from google.colab import drive
+    drive.mount('/content/drive')
+
+**b) Validar o `data.py`** — primeiro contato do código com dados reais. O
+download acontece aqui (5-10 min). Se a estrutura do dataset estiver errada,
+levanta erro explicando o quê:
+
+    from dogs.config import TrainConfig
+    from dogs.data import load_data
+
+    dados = load_data(TrainConfig(experiment_name="smoke"))
+    imagens, rotulos = next(iter(dados.train_loader))
+    print(imagens.shape, rotulos.shape, dados.num_classes)
+    print(dados.class_names[:3])
+
+Esperado: `[64, 3, 224, 224]`, `[64]`, `120` e nomes como `n02085620-Chihuahua`.
+
+**c) Gerar os embeddings** (~8 min):
+
+    !python -m dogs.features --backbone resnet50
+
+**d) Copiar para o Drive e avisar a Mari:**
+
+    !mkdir -p /content/drive/MyDrive/project-image-processing/features
+    !cp data/processed/features/*.npy /content/drive/MyDrive/project-image-processing/features/
+    !ls -lh /content/drive/MyDrive/project-image-processing/features/
+
+Estas células são operação de bastidor, não parte da entrega — **apague-as** do
+`99_final.ipynb` quando terminar, ou rode num notebook separado.
 
 **Pronto quando:** os seis `.npy` estão no Drive e a Mari confirmou que carregou.
 
@@ -240,15 +282,18 @@ Escreva para alguém que conhece ML mas não conhece este trabalho. Sem enrolaç
 
 ---
 
-## Passo 9 · Montar o notebook final 🔵 · 3h
+## Passo 9 · Fechar o notebook 🔵 · 1h
 
-- [ ] Trazer resultados e figuras dos notebooks de trabalho
-- [ ] Tabela consolidada a partir do `results.csv`
-- [ ] **Avaliar no split de teste — a única vez.** Só o melhor modelo
+Como cada resultado já foi entrando ao longo da semana, aqui é só fechar.
+
+- [ ] Rodar a célula de estado — os quatro experimentos precisam estar `ok`
+- [ ] **Avaliar no split de teste — a única vez.** Só o melhor modelo.
+      `save_predictions(..., split="test")` e commite o `.npz`
+- [ ] Conferir que os números do texto batem com o `results.csv`
 - [ ] Tornar a pasta do Drive pública (Compartilhar → Qualquer pessoa com o
       link → Leitor)
 
-**Pronto quando:** o Passo 11 passa.
+**Pronto quando:** a célula de estado imprime "pronto para o teste de entrega".
 
 ---
 
@@ -288,6 +333,16 @@ Se falhar, corrija, dê push e **repita o teste inteiro.** Teste parcial não va
 ---
 
 # Sábado · entrega
+
+**Revisão cruzada** — cada um revisa o que o *outro* escreveu:
+
+- [ ] Os cinco itens obrigatórios estão todos cobertos?
+- [ ] Todo número no texto bate com o `results.csv`?
+- [ ] Toda figura tem título, eixos rotulados e é citada no texto?
+- [ ] Alguma afirmação sem respaldo nos experimentos?
+- [ ] Nomes dos dois autores no topo?
+
+Depois:
 
 - [ ] Última execução limpa
 - [ ] Commit e push · confirmar que o repositório está público

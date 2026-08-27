@@ -17,17 +17,29 @@ Trabalho final de Visão Computacional — pós-graduação em LLM e IA Generati
 
 ## Setup
 
-### Colab (recomendado)
+### Colab
 
-Abra `notebooks/99_final.ipynb` e rode a primeira célula. Ela clona o repositório
-e instala as dependências sozinha — nada de montar Drive ou ajustar caminho.
+[![Abrir no Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/victormacaubas/project-image-processing/blob/main/notebooks/99_final.ipynb)
 
-Montar o Drive é **opcional**, e só serve para não perder checkpoints quando o
-Colab desconectar:
+O `99_final.ipynb` é autossuficiente: a primeira célula clona o repositório e
+instala o que falta. Roda em ~2 min.
+
+Para os notebooks de trabalho (`01_eda`, `02_baseline`, ...), cole isto na
+primeira célula:
+
+```python
+!git clone -q https://github.com/victormacaubas/project-image-processing.git
+%cd project-image-processing
+!pip install -q -r requirements-colab.txt
+import sys; sys.path.insert(0, 'src')
+```
+
+Montar o Drive é **opcional** — serve como cache do dataset e dos checkpoints,
+para não rebaixar 776 MB a cada sessão:
 
 ```python
 from google.colab import drive
-drive.mount('/content/drive')   # opcional — só como cache de artefatos
+drive.mount('/content/drive')
 ```
 
 > O código nunca *depende* do Drive. Quem clonar o repo numa conta qualquer
