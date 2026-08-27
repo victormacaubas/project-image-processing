@@ -84,6 +84,15 @@ def comparar_experimentos(
         _, ax = plt.subplots(figsize=(8, 0.5 * len(results_df) + 1))
 
     ordenado = results_df.sort_values(metrica)
+
+    repetidos = ordenado["experiment"][ordenado["experiment"].duplicated()].unique()
+    if len(repetidos):
+        raise ValueError(
+            f"Experimentos repetidos em results_df: {list(repetidos)}. Barras com o mesmo "
+            "rótulo caem na mesma posição do eixo categórico e o gráfico sai ilegível; "
+            "filtre por split antes de chamar (ex.: results[results['split'] == 'val'])."
+        )
+
     barras = ax.barh(ordenado["experiment"], ordenado[metrica])
     ax.set_xlabel(metrica)
     ax.set_ylabel("experimento")
