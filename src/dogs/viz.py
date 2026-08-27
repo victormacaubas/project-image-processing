@@ -124,9 +124,10 @@ def matriz_confusao_recorte(
     """Heatmap normalizado por linha de um recorte da matriz de confusão.
 
     A matriz completa 120x120 é ilegível; passe em indices_classes apenas as classes de
-    interesse. Cada linha é normalizada pelo total de amostras da classe real, mostrando
-    proporção em vez de contagem; uma classe sem amostras no recorte fica com linha zerada
-    em vez de dividir por zero. Sugestão de destino para salvar_em: dogs.config.FIGURES_DIR.
+    interesse. Cada linha é normalizada pelo total de amostras da classe real no split
+    inteiro, então 0.48 significa "48% das imagens desta raça", não "48% das que caíram no
+    recorte". Como consequência as linhas somam menos de 1: o que falta são erros para
+    classes fora do recorte. Sugestão de destino para salvar_em: dogs.config.FIGURES_DIR.
     """
     from sklearn.metrics import confusion_matrix
 
@@ -134,8 +135,10 @@ def matriz_confusao_recorte(
     matriz_completa = confusion_matrix(labels, predictions, labels=range(len(class_names)))
     recorte = matriz_completa[np.ix_(indices_classes, indices_classes)].astype(float)
 
-    somas = recorte.sum(axis=1, keepdims=True)
-    recorte_normalizado = np.divide(recorte, somas, out=np.zeros_like(recorte), where=somas != 0)
+    totais = matriz_completa[indices_classes].sum(axis=1, keepdims=True).astype(float)
+    recorte_normalizado = np.divide(
+        recorte, totais, out=np.zeros_like(recorte), where=totais != 0
+    )
 
     rotulos = [nome_legivel(class_names[i]) for i in indices_classes]
 

@@ -2,7 +2,7 @@
 # No Colab, use requirements-colab.txt — instalar torch lá força reinstalação
 # demorada e pede restart de runtime, que quebra a execução de ponta a ponta.
 
-torch>=2.2,<3
+torch>=2.3,<3   # torch.amp.GradScaler usado em train.py
 torchvision>=0.17,<1
 datasets>=2.18,<4
 numpy>=1.26,<3

@@ -73,6 +73,12 @@ def train_model(
         optimizer, T_max=config.num_epochs
     )
 
+    # Precisão mista corta quase pela metade o tempo por epoch em GPU. Fora de CUDA fica
+    # desligada, e nesse caso o scaler repassa a loss e o optimizer.step() sem alterar nada,
+    # então o laço abaixo é o mesmo nos dois casos.
+    usar_amp = device.type == "cuda"
+    scaler = torch.amp.GradScaler(device.type, enabled=usar_amp)
+
     best_accuracy = -1.0
     best_metrics: Metrics | None = None
     best_epoch = 0
@@ -90,9 +96,11 @@ def train_model(
             targets = targets.to(device, non_blocking=True)
 
             optimizer.zero_grad(set_to_none=True)
-            loss = criterion(model(inputs), targets)
-            loss.backward()
-            optimizer.step()
+            with torch.autocast(device_type=device.type, enabled=usar_amp):
+                loss = criterion(model(inputs), targets)
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
 
             running_loss += loss.item() * targets.size(0)
             seen += targets.size(0)
