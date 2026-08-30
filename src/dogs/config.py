@@ -42,6 +42,12 @@ def dataset_cache_dir() -> Path:
         destino.mkdir(parents=True, exist_ok=True)
         return destino
 
+    # A célula de bootstrap pode restaurar esse cache do Drive no repositório
+    # temporário do Colab. Reutilizá-lo evita baixar novamente os ~776 MB do dataset.
+    cache_restaurado = PROCESSED_DIR / "hf_cache"
+    if cache_restaurado.is_dir():
+        return cache_restaurado
+
     RAW_DIR.mkdir(parents=True, exist_ok=True)
     return RAW_DIR
 

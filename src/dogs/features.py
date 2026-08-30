@@ -120,6 +120,58 @@ def make_feature_loader(
     return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, drop_last=shuffle)
 
 
+def ensure_feature_splits(
+    backbone: str = "resnet50",
+    splits: tuple[str, ...] = ("train", "val"),
+    *,
+    batch_size: int = 64,
+    num_workers: int = 2,
+) -> None:
+    """Gera apenas os embeddings ausentes dos splits solicitados.
+
+    É o fallback do notebook quando a pasta compartilhada não contém os arquivos
+    ``.npy``. Os embeddings são extraídos uma única vez, sem augmentation, e os
+    arquivos já existentes são preservados.
+    """
+    loaders_validos = {"train", "val", "test"}
+    desconhecidos = set(splits) - loaders_validos
+    if desconhecidos:
+        raise ValueError(f"Splits desconhecidos: {sorted(desconhecidos)}")
+
+    faltando = [
+        split
+        for split in splits
+        if not all(path.exists() for path in feature_paths(backbone, split))
+    ]
+    if not faltando:
+        logger.info("Embeddings de %s já estão disponíveis.", backbone)
+        return
+
+    ensure_dirs()
+    config = TrainConfig(
+        experiment_name=f"features_{backbone}",
+        batch_size=batch_size,
+        num_workers=num_workers,
+        use_augmentation=False,
+    )
+    data = load_data(config)
+    loaders = {
+        "train": data.train_loader,
+        "val": data.val_loader,
+        "test": data.test_loader,
+    }
+    model, dim = build_backbone(backbone)
+    device = get_device()
+    logger.info("Extraindo embeddings %s (dim=%d) para %s", backbone, dim, faltando)
+
+    for split in faltando:
+        features, labels = extract(model, loaders[split], device)
+        path_x, path_y = feature_paths(backbone, split)
+        np.save(path_x, features)
+        np.save(path_y, labels)
+        logger.info("Embeddings de %s salvos: %s", split, features.shape)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--backbone", default="resnet50", choices=BACKBONES)
