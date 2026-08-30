@@ -29,6 +29,7 @@ __pycache__/
 .venv/
 venv/
 *.egg-info/
+.pre-commit-cache/
 
 .DS_Store
 .vscode/

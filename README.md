@@ -1,110 +1,77 @@
 # Classificação Fine-Grained de Raças de Cães
 
-Trabalho final de Visão Computacional — pós-graduação em LLM e IA Generativa.
+Trabalho final da disciplina **Processamento e Análise de Imagens**, da
+pós-graduação em LLM e IA Generativa.
 
-<https://github.com/victormacaubas/project-image-processing>
+**Integrantes:** Mariana Zanon e Victor Macaúbas
 
-**Dataset:** Stanford Dogs (120 raças, 20.580 imagens)
-**Entrega:** sábado, 29/08/2026
-**Notebook final:** `notebooks/99_final.ipynb`
+**Notebook de entrega:** [`notebooks/99_final.ipynb`](notebooks/99_final.ipynb)
 
-- **[`docs/roteiro.md`](docs/roteiro.md)** — os passos, dia a dia. É por aqui que se trabalha
-- **[`docs/plan.md`](docs/plan.md)** — as decisões e o porquê de cada uma
-- **[`docs/pytorch-basico.md`](docs/pytorch-basico.md)** — PyTorch em 20 min, para consulta
+## Objetivo
 
-> `data.py`, `features.py`, `train.py` e `evaluate.py` estão implementados.
-> `models.py` é o único ainda em aberto — as docstrings dizem o que fazer.
+O projeto compara estratégias para classificar imagens do Stanford Dogs em 120
+raças. A pergunta central é quanto de representação visual precisa ser aprendida
+do zero e quanto pode ser transferida de um modelo pré-treinado quando há dados
+limitados em uma tarefa de classificação fine-grained.
 
-## Setup
+## Base de dados e ambiente
 
-### Colab
+Usamos o dataset [Stanford Dogs](https://huggingface.co/datasets/maurice-fp/stanford-dogs),
+em sua versão parquet no Hugging Face. Ele contém 20.580 imagens de 120 raças,
+com split oficial de 12.000 imagens de treino e 8.580 de teste. Reservamos 15%
+do treino para validação, com semente fixa 42, resultando em 10.200 imagens de
+treino e 1.800 de validação. O treino oficial é perfeitamente balanceado, com
+100 imagens por raça.
+
+Os experimentos que exigem treinamento foram executados no Google Colab com GPU
+T4. O notebook de entrega, porém, usa `RETRAIN = False`: ele lê as predições e
+figuras versionadas em `reports/`, sem baixar a base, embeddings ou checkpoints.
+
+## Experimentos e resultados
+
+| Experimento | Estratégia | Split | Top-1 | Top-5 | F1 macro |
+|---|---|---:|---:|---:|---:|
+| Experimento 01 | CNN pequena treinada do zero | validação | 10,39% | 29,06% | 7,98% |
+| Experimento 02 | Linear probe sobre embeddings ResNet50 | validação | 88,39% | 98,00% | 88,05% |
+| Experimento 02 — ablação | Linear probe sem BatchNorm | validação | **90,89%** | **99,22%** | **90,56%** |
+| Experimento 03 | Fine-tuning parcial da ResNet50 | validação | 85,33% | 98,61% | 83,97% |
+| Experimento 03 | Fine-tuning parcial da ResNet50 | teste | 85,17% | 98,58% | 84,42% |
+
+O principal achado é o salto de 10,39% para 88,39% ao transferir a
+representação visual da ResNet50. Nesta execução, a ablação sem BatchNorm foi o
+melhor resultado de validação, superando inclusive o fine-tuning parcial.
+
+## Reprodução
+
+Para abrir a entrega no Colab, use o botão abaixo:
 
 [![Abrir no Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/victormacaubas/project-image-processing/blob/main/notebooks/99_final.ipynb)
 
-O `99_final.ipynb` é autossuficiente: a primeira célula clona o repositório e
-instala o que falta. Roda em ~2 min.
-
-Para os notebooks de trabalho (`01_eda`, `02_baseline`, ...), cole isto na
-primeira célula:
-
-```python
-!git clone -q https://github.com/victormacaubas/project-image-processing.git
-%cd project-image-processing
-!pip install -q -r requirements-colab.txt
-import sys; sys.path.insert(0, 'src')
-```
-
-Montar o Drive é **opcional** — serve como cache do dataset e dos checkpoints,
-para não rebaixar 776 MB a cada sessão:
-
-```python
-from google.colab import drive
-drive.mount('/content/drive')
-```
-
-> O código nunca *depende* do Drive. Quem clonar o repo numa conta qualquer
-> consegue rodar tudo. Ver `drive_mounted()` em `config.py`.
-
-### Local
-
-```bash
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-pip install -e .
-pre-commit install     # obrigatório: evita conflito em notebook
-```
-
-## Fluxo
-
-```bash
-# 1. Gerar embeddings — roda UMA vez, destrava todo o resto
-python -m dogs.features --backbone resnet50
-
-# 2. Experimentos: ver notebooks/
-```
+Em um runtime limpo, basta executar todas as células. O notebook de entrega usa
+os artefatos versionados e não exige GPU; a T4 foi necessária apenas na etapa de
+treinamento que gerou os resultados apresentados.
 
 ## Estrutura
 
-```
+```text
 src/dogs/
-  config.py     # caminhos e hiperparâmetros — nada hardcoded fora daqui
-  data.py       # dataset, splits, transforms
-  features.py   # extração de embeddings (rodar primeiro)
-  models.py     # SmallCNN (E1), LinearProbe (E2), fine-tuning (E3)
-  train.py      # loop de treino único, compartilhado
-  evaluate.py   # métricas, results.csv, análise de erros
+  config.py       caminhos, configurações e ambiente
+  data.py         dataset, split determinístico e transformações
+  eda.py          figuras da análise exploratória
+  features.py     embeddings da ResNet50
+  models.py       arquiteturas dos três experimentos
+  train.py        treinamento e checkpoints
+  evaluate.py     métricas, predições e análise de erros
+  viz.py          visualizações
 
 notebooks/
-  01_eda.ipynb        # Mari
-  02_baseline.ipynb   # Mari — E1 e E2
-  03_finetune.ipynb   # Victor — E3
-  04_analysis.ipynb   # Victor — E4
-  99_final.ipynb      # entrega — montado na sexta
+  99_final.ipynb  notebook de entrega
 
 reports/
-  results.csv         # toda métrica de todo experimento
-  predictions/*.npz   # logits + labels (~3 MB) — versionados
-  figures/*.png       # figuras do EDA e da análise — versionadas
+  results.csv     métricas consolidadas
+  predictions/    logits e rótulos versionados
+  figures/        EDA, comparação e análise de erros
+
+docs/
+  plan.md         decisões e planejamento do projeto
 ```
-
-Os arquivos em `reports/` são leves e vão para o Git de propósito: é o que faz o
-notebook final rodar em ~2 min na correção, sem baixar nada. Embeddings e
-checkpoints ficam no Drive e só são necessários com `RETRAIN = True`.
-
-## Experimentos
-
-| ID | O quê | Dono | Status |
-|---|---|---|---|
-| E1 | CNN do zero | Mari | ⬜ |
-| E2 | Linear probe (backbone congelado) | Mari | ⬜ |
-| E3 | Fine-tuning parcial | Victor | ⬜ |
-| E4 | Análise de erros | Victor | ⬜ |
-| E5 | Segundo backbone *(bônus)* | — | ⬜ |
-| E6 | CLIP zero-shot *(bônus)* | — | ⬜ |
-
-## Regras
-
-- Notebook nunca é commitado com output (`pre-commit install` cuida disso)
-- Lógica vai em `src/`, notebook só importa e chama
-- Todo experimento termina com `log_result()` **e** `save_predictions()`
-- O split de teste é avaliado **uma vez**, no fim. Até lá, só validação.
