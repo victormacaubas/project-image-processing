@@ -84,27 +84,41 @@ def evaluate(model: nn.Module, loader: DataLoader, device: torch.device) -> Metr
 
 
 def log_result(experiment_name: str, split: str, metrics: Metrics, notes: str = "") -> None:
-    """Acrescenta as métricas de um experimento ao CSV de resultados."""
-    ensure_dirs()
-    is_new = not RESULTS_CSV.exists()
+    """Registra as métricas de um experimento, substituindo uma execução anterior.
 
-    with RESULTS_CSV.open("a", newline="", encoding="utf-8") as handle:
-        writer = csv.writer(handle)
-        if is_new:
-            writer.writerow(
-                ["experiment", "split", "top1", "top5", "f1_macro", "loss", "notes"]
-            )
-        writer.writerow(
-            [
-                experiment_name,
-                split,
-                f"{metrics.top1:.4f}",
-                f"{metrics.top5:.4f}",
-                f"{metrics.f1_macro:.4f}",
-                f"{metrics.loss:.4f}",
-                notes,
+    O notebook pode ser reexecutado durante o desenvolvimento. Manter uma única
+    linha por par ``(experiment_name, split)`` evita barras duplicadas no gráfico
+    de comparação e garante que o CSV represente a última execução daquele teste.
+    """
+    ensure_dirs()
+    fieldnames = ["experiment", "split", "top1", "top5", "f1_macro", "loss", "notes"]
+    rows: list[dict[str, str]] = []
+
+    if RESULTS_CSV.exists():
+        with RESULTS_CSV.open(newline="", encoding="utf-8") as handle:
+            reader = csv.DictReader(handle)
+            rows = [
+                row
+                for row in reader
+                if (row["experiment"], row["split"]) != (experiment_name, split)
             ]
-        )
+
+    rows.append(
+        {
+            "experiment": experiment_name,
+            "split": split,
+            "top1": f"{metrics.top1:.4f}",
+            "top5": f"{metrics.top5:.4f}",
+            "f1_macro": f"{metrics.f1_macro:.4f}",
+            "loss": f"{metrics.loss:.4f}",
+            "notes": notes,
+        }
+    )
+
+    with RESULTS_CSV.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
 
     logger.info("registrado %s/%s: %s", experiment_name, split, metrics)
 

@@ -9,7 +9,7 @@ import time
 import numpy as np
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, TensorDataset
 
 from dogs.config import FEATURES_DIR, TrainConfig, drive_cache_dir, ensure_dirs
 from dogs.data import load_data
@@ -96,6 +96,28 @@ def load_features(backbone: str = "resnet50", split: str = "train"):
         raise ValueError(f"X e y desalinhados em {split}: {len(X)} vs {len(y)}")
 
     return X, y
+
+
+def make_feature_loader(
+    features: np.ndarray,
+    labels: np.ndarray,
+    *,
+    batch_size: int = 256,
+    shuffle: bool,
+) -> DataLoader:
+    """Cria um loader de embeddings com batch final descartado apenas no treino.
+
+    O ``drop_last`` no treino evita um último lote unitário, incompatível com o
+    ``BatchNorm1d`` usado pelo linear probe. Na validação ele permanece desligado
+    para que cada logit salvo corresponda exatamente a um rótulo.
+    """
+    if len(features) != len(labels):
+        raise ValueError(f"features e labels desalinhados: {len(features)} vs {len(labels)}")
+
+    dataset = TensorDataset(
+        torch.from_numpy(features).float(), torch.from_numpy(labels).long()
+    )
+    return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, drop_last=shuffle)
 
 
 def main() -> None:
