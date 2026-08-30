@@ -12,10 +12,24 @@ class SmallCNN(nn.Module):
 
     def __init__(self, num_classes: int = NUM_CLASSES, dropout: float = 0.3) -> None:
         super().__init__()
-        raise NotImplementedError
+        self.features = nn.Sequential(
+            nn.Conv2d(3, 16, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.MaxPool2d(2, 2),
+
+            nn.Conv2d(16, 32, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.MaxPool2d(2, 2),
+
+            nn.Conv2d(32, 64, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.AdaptiveAvgPool2d((7, 7))
+        )
 
     def forward(self, x):
-        raise NotImplementedError
+        nn.Flatten(),
+        nn.Dropout(dropout),
+        nn.Linear(64 * 7 * 7, num_classes)
 
 
 class LinearProbe(nn.Module):
@@ -23,10 +37,10 @@ class LinearProbe(nn.Module):
 
     def __init__(self, input_dim: int, num_classes: int = NUM_CLASSES) -> None:
         super().__init__()
-        raise NotImplementedError
+        self.fc = nn.Linear(input_dim, num_classes)
 
     def forward(self, x):
-        raise NotImplementedError
+        return self.fc(x)
 
 
 def build_finetune_model(backbone_name: str, unfreeze_last_n_blocks: int) -> nn.Module:
